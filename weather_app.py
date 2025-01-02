@@ -2,26 +2,42 @@ import requests
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from tkinter import messagebox
+from ttkbootstrap.window import Toplevel
 
 
 class WeatherApp:
     def __init__(self, master) -> None:
         self.master = master
-        self.master.geometry("400x400")
+        self.master.geometry("400x500")
         self.master.title("Weather App")
 
+        # Configure columns for responsiveness
         self.master.columnconfigure(0, weight=1)
         self.master.columnconfigure(1, weight=1)
         self.master.columnconfigure(2, weight=1)
 
-        ttk.Label(self.master, text="Insert a town:", font=("Helvetica", 15)).grid(row=0, column=1, pady=10)
+        # Title Label
+        ttk.Label(self.master, text="Weather App", font=("Helvetica", 20), bootstyle=INFO).grid(row=0, column=1, pady=20)
 
-        self.entry_for_town = ttk.Entry(self.master, bootstyle=PRIMARY, width=25)
-        self.entry_for_town.grid(row=1, column=1, padx=10, pady=10)
+        # Entry Label
+        ttk.Label(self.master, text="Enter a town:", font=("Helvetica", 15)).grid(row=1, column=1, pady=10)
+
+        # Entry Field
+        self.entry_for_town = ttk.Entry(self.master, bootstyle=PRIMARY, width=30)
+        self.entry_for_town.grid(row=2, column=1, padx=10, pady=10)
+
+        # Clear Button
+        self.clear_button = ttk.Button(
+            self.master,
+            text="Clear",
+            command=self.clear_entry,
+            bootstyle="outline"
+        )
+        self.clear_button.grid(row=3, column=1, padx=10, pady=10)
 
         # Menubutton for selecting temperature unit
         self.unit_selection = ttk.Menubutton(self.master, text="C / F", bootstyle=PRIMARY)
-        self.unit_selection.grid(row=2, column=1, padx=10, pady=10)
+        self.unit_selection.grid(row=4, column=1, padx=10, pady=10)
 
         # Create a menu and associate it with the Menubutton
         self.unit_menu = ttk.Menu(self.unit_selection, tearoff=0)
@@ -32,8 +48,13 @@ class WeatherApp:
 
         self.selected_unit = "C"
 
+        # Show Weather Button
         self.button_to_show_weather = ttk.Button(self.master, text="Show Weather", command=self.get_weather)
-        self.button_to_show_weather.grid(row=3, column=1)
+        self.button_to_show_weather.grid(row=5, column=1, pady=20)
+
+    def clear_entry(self):
+        """Clear the town entry field."""
+        self.entry_for_town.delete(0, 'end')
 
     def set_unit(self, unit):
         """Set the selected unit and update the Menubutton text."""
@@ -41,28 +62,55 @@ class WeatherApp:
         self.unit_selection.config(text=unit)  # Update the button text
 
     @staticmethod
-    def fetch_weather(town):
-        url = f"http://api.weatherapi.com/v1/current.json?key=85dbfaf9e0b443378b4142616243112&q={town}&aqi=no"
-
-        response = requests.get(url)
-
-        if response.status_code == 200:
+    def fetch_weather(url):
+        """Fetch weather data from the API."""
+        try:
+            response = requests.get(url)
+            response.raise_for_status()  # Raise an error for bad status codes
             return response.json()
-        else:
-            messagebox.showerror("Input Error", "Please enter a valid town.")
+        except requests.RequestException:
+            messagebox.showerror("Error", "Failed to fetch weather data. Please check your internet connection or API key.")
             return None
 
-    def get_weather(self):
-        town = self.entry_for_town.get()
+    def weather_of_town(self, town_info, town_name: str):
+        """Display the weather of the entered town in a new window."""
+        town_window = Toplevel()
+        town_window.geometry("400x300")
+        town_window.title(f"Weather: {town_name}")
 
-        town_info = self.fetch_weather(town)
+        unit = self.selected_unit.lower()
+        current_weather = town_info["current"]
+
+        # Extract weather details
+        degrees = current_weather[f"temp_{unit}"]
+        feels_like = current_weather[f"feelslike_{unit}"]
+        condition = current_weather["condition"]["text"]
+        humidity = current_weather["humidity"]
+        wind_speed = current_weather["wind_kph"]
+
+        # Display Weather Details
+        ttk.Label(town_window, text=f"Weather in {town_name}:", font=("Helvetica", 20), bootstyle=INFO).pack(pady=10)
+        ttk.Label(town_window, text=f"Temperature: {degrees}°", font=("Helvetica", 15)).pack(pady=5)
+        ttk.Label(town_window, text=f"Feels Like: {feels_like}°", font=("Helvetica", 15)).pack(pady=5)
+        ttk.Label(town_window, text=f"Condition: {condition}", font=("Helvetica", 15)).pack(pady=5)
+        ttk.Label(town_window, text=f"Humidity: {humidity}%", font=("Helvetica", 15)).pack(pady=5)
+        ttk.Label(town_window, text=f"Wind Speed: {wind_speed} kph", font=("Helvetica", 15)).pack(pady=5)
+
+        town_window.mainloop()
+
+    def get_weather(self):
+        """Fetch weather data and display it."""
+        town = self.entry_for_town.get().strip()
+        if not town:
+            messagebox.showwarning("Input Error", "Please enter a valid town name.")
+            return
+
+        url = f"http://api.weatherapi.com/v1/current.json?key=85dbfaf9e0b443378b4142616243112&q={town}&aqi=no"
+
+        town_info = self.fetch_weather(url)
 
         if town_info:
-            unit = self.selected_unit.lower()
-
-            degrees = town_info["current"][f"temp_{unit}"]
-
-            messagebox.showinfo(town, f"{degrees}°")
+            self.weather_of_town(town_info, town)
 
 
 if __name__ == "__main__":
