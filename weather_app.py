@@ -8,7 +8,7 @@ from ttkbootstrap.window import Toplevel
 class WeatherApp:
     def __init__(self, master) -> None:
         self.master = master
-        self.master.geometry("400x500")
+        self.master.geometry("400x350")
         self.master.title("Weather App")
 
         # Configure columns for responsiveness
@@ -72,10 +72,21 @@ class WeatherApp:
             messagebox.showerror("Error", "Failed to fetch weather data. Please check your internet connection or API key.")
             return None
 
+    def aqi_for_town(self, town_aqi, town_name):
+        window_aqi = Toplevel()
+        window_aqi.geometry("400x300")
+        window_aqi.title(f"Air quality index: {town_name}:")
+
+        ttk.Label(window_aqi, text=f"Air quality index(aqi) of {town_name}",
+                  font=("Helvetica", 20), bootstyle=INFO).pack(pady=10)
+
+        for element, quality in town_aqi.items():
+            ttk.Label(window_aqi, text=f"{element}: {quality}", font=("Helvetica", 15)).pack(pady=5)
+
     def weather_of_town(self, town_info, town_name: str):
         """Display the weather of the entered town in a new window."""
         town_window = Toplevel()
-        town_window.geometry("400x300")
+        town_window.geometry("400x280")
         town_window.title(f"Weather: {town_name}")
 
         unit = self.selected_unit.lower()
@@ -96,6 +107,12 @@ class WeatherApp:
         ttk.Label(town_window, text=f"Humidity: {humidity}%", font=("Helvetica", 15)).pack(pady=5)
         ttk.Label(town_window, text=f"Wind Speed: {wind_speed} kph", font=("Helvetica", 15)).pack(pady=5)
 
+        aqi = current_weather["air_quality"]
+
+        button_aqi = ttk.Button(town_window, text="See air quality index(aqi)",
+                                command=lambda: self.aqi_for_town(aqi, town_name))
+        button_aqi.pack(pady=10)
+
         town_window.mainloop()
 
     def get_weather(self):
@@ -105,7 +122,7 @@ class WeatherApp:
             messagebox.showwarning("Input Error", "Please enter a valid town name.")
             return
 
-        url = f"http://api.weatherapi.com/v1/current.json?key=85dbfaf9e0b443378b4142616243112&q={town}&aqi=no"
+        url = f"http://api.weatherapi.com/v1/current.json?key=85dbfaf9e0b443378b4142616243112&q={town}&aqi=yes"
 
         town_info = self.fetch_weather(url)
 
